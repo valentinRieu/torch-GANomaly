@@ -1,8 +1,11 @@
 import math
 
+import numpy as np
 import torch
 from torch import Tensor, nn
 from typing import Tuple
+
+from torchviz import make_dot
 
 
 class Encoder(nn.Module):
@@ -64,8 +67,27 @@ class Encoder(nn.Module):
         # and Tsung-Yi Lin et al. 2017 (https://arxiv.org/abs/1612.03144)
 
         self.pyramid_features = nn.Sequential()
-        
+
     def forward(self, input_tensor: Tensor) -> Tensor:
         """ Computation performed at every call"""
-        pass
+        output = self.input_layers(input_tensor)
+        output = self.hidden_layers(output)
+        return output
+
+
+if __name__ == '__main__':
+    dummy_input = torch.randn(1,3, 256, 256)
+
+    encoder = Encoder(
+        (256, 256),
+        8,
+        3,
+        4,
+        4
+    )
+
+    output = encoder(dummy_input)
+    dot = make_dot(output, params=dict(encoder.named_parameters()))
+    dot.graph_attr['dpi'] = '1000'
+    dot.render('model_graph', format='png')
 
