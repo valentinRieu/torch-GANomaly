@@ -40,7 +40,8 @@ class Encoder(nn.Module):
         )
         # Standard activation layer using ReLU
         self.input_layers.add_module(
-            name=f'input-{n_features}-relu', module=nn.ReLU(inplace=True)
+            name=f'input-{n_features}-relu',
+            module=nn.ReLU(inplace=True)
         )
 
         # Hidden layers. They perform convolution and Batch Normalization
@@ -67,16 +68,37 @@ class Encoder(nn.Module):
         # and Tsung-Yi Lin et al. 2017 (https://arxiv.org/abs/1612.03144)
 
         self.pyramid_features = nn.Sequential()
+        curr_dim = min(input_size) // 2
+        while curr_dim > 4:
+            feature_in = n_features
+            feature_out = n_features * 2
+            self.pyramid_features.add_module(
+                name=f'pyramid-{feature_in}-{feature_out}-conv',
+                module=nn.Conv2d(feature_in, feature_out, kernel_size=4, padding=1, bias=False)
+            )
+            self.pyramid_features.add_module(
+                name=f'pyramid-{feature_out}-batchnorm',
+                module=nn.BatchNorm2d(feature_out)
+            )
+            self.pyramid_features.add_module(
+                name=f'pyramid-{feature_out}-relu',
+                module=nn.ReLU(inplace=True)
+            )
+            n_features = feature_out
+            curr_dim //= 2
+
+
 
     def forward(self, input_tensor: Tensor) -> Tensor:
         """ Computation performed at every call"""
         output = self.input_layers(input_tensor)
         output = self.hidden_layers(output)
+        output = self.pyramid_features(output)
         return output
 
 
 if __name__ == '__main__':
-    dummy_input = torch.randn(1,3, 256, 256)
+    dummy_input = torch.randn(1, 3, 256, 256)
 
     encoder = Encoder(
         (256, 256),
