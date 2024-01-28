@@ -31,21 +31,22 @@ class Encoder(nn.Module):
 
         # We use Sequential models to stack our layers
         # This applies for the input layer, the hidden layers and Pyramid Network
+        # Leaky ReLU as an activation layer, as described in the paper
 
         self.input_layers = nn.Sequential()
 
         self.input_layers.add_module(
             name=f'input-{n_input_channels}-{n_features}-conv',
-            module=nn.Conv2d(n_input_channels, n_features, kernel_size=4, padding=4, bias=False)
+            module=nn.Conv2d(n_input_channels, n_features, kernel_size=4, bias=False)
         )
         # Standard activation layer using ReLU
         self.input_layers.add_module(
             name=f'input-{n_features}-relu',
-            module=nn.ReLU(inplace=True)
+            module=nn.LeakyReLU(inplace=True)
         )
 
         # Hidden layers. They perform convolution and Batch Normalization
-        # it should add stability the model
+        # It adds stability to the model
         # mean = 0, std = 1
 
         self.hidden_layers = nn.Sequential()
@@ -53,7 +54,7 @@ class Encoder(nn.Module):
         for layer in range(hidden_size):
             self.hidden_layers.add_module(
                 name=f'hidden-layer-{layer}-{n_features}-conv',
-                module=nn.Conv2d(n_features, n_features, kernel_size=4, padding=1, bias=False)
+                module=nn.Conv2d(n_features, n_features, kernel_size=4, bias=False)
             )
             self.hidden_layers.add_module(
                 name=f'hidden-layer-{layer}-{n_features}-batchnorm',
@@ -61,12 +62,13 @@ class Encoder(nn.Module):
             )
             self.hidden_layers.add_module(
                 name=f'hidden-layer-{layer}-{n_features}-relu',
-                module=nn.ReLU(inplace=True)
+                module=nn.LeakyReLU(inplace=True)
             )
 
         # Feature Pyramid Network. See README.md for graph of the architecture,
         # and Tsung-Yi Lin et al. 2017 (https://arxiv.org/abs/1612.03144)
 
+        self.pyramid_features = nn.Sequential()
         self.pyramid_features = nn.Sequential()
         curr_dim = min(input_size) // 2
         while curr_dim > 4:
@@ -74,7 +76,7 @@ class Encoder(nn.Module):
             feature_out = n_features * 2
             self.pyramid_features.add_module(
                 name=f'pyramid-{feature_in}-{feature_out}-conv',
-                module=nn.Conv2d(feature_in, feature_out, kernel_size=4, padding=1, bias=False)
+                module=nn.Conv2d(feature_in, feature_out, kernel_size=4, bias=False)
             )
             self.pyramid_features.add_module(
                 name=f'pyramid-{feature_out}-batchnorm',
@@ -82,12 +84,10 @@ class Encoder(nn.Module):
             )
             self.pyramid_features.add_module(
                 name=f'pyramid-{feature_out}-relu',
-                module=nn.ReLU(inplace=True)
+                module=nn.LeakyReLU(inplace=True)
             )
             n_features = feature_out
             curr_dim //= 2
-
-
 
     def forward(self, input_tensor: Tensor) -> Tensor:
         """ Computation performed at every call"""
